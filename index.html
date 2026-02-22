@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Income & Expenses Tracker (Daily + Weekly)</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Income & Expenses Tracker</h1>
+        <p class="byline">Made by Daniel Louis for his mum</p>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="tabs" role="tablist" aria-label="Views">
+        <button class="tab" id="tabDaily" role="tab" aria-selected="true" aria-controls="panelDaily">Daily Record</button>
+        <button class="tab" id="tabWeekly" role="tab" aria-selected="false" aria-controls="panelWeekly">Weekly Record</button>
+      </div>
+
+      <!-- DAILY PANEL -->
+      <section id="panelDaily" role="tabpanel" aria-labelledby="tabDaily">
+        <div class="grid">
+          <div class="field date">
+            <label for="date">Date</label>
+            <input id="date" type="date" />
+          </div>
+
+          <div class="field income">
+            <label for="income">Income</label>
+            <input id="income" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 5000" />
+          </div>
+
+          <div class="field expenses">
+            <label for="expenses">Expenses</label>
+            <input id="expenses" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 1200" />
+          </div>
+
+          <div class="field desc">
+            <label for="desc">Description</label>
+            <input id="desc" type="text" maxlength="80" placeholder="e.g. Transport, Food, Client payment..." />
+          </div>
+        </div>
+
+        <div class="row">
+          <button id="addBtn">Add Daily Entry</button>
+          <button id="clearBtn" class="danger">Clear All</button>
+          <span class="muted" id="status"></span>
+        </div>
+
+        <div class="summary">
+          <div class="pill">
+            <div class="k">Total Income (All Days)</div>
+            <div class="v" id="totalIncome">0.00</div>
+          </div>
+          <div class="pill">
+            <div class="k">Total Expenses (All Days)</div>
+            <div class="v" id="totalExpenses">0.00</div>
+          </div>
+          <div class="pill">
+            <div class="k">Profit (Income − Expenses)</div>
+            <div class="v" id="profit">0.00</div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 140px;">Date</th>
+              <th>Description</th>
+              <th class="num" style="width: 140px;">Income</th>
+              <th class="num" style="width: 140px;">Expenses</th>
+              <th class="actions" style="width: 120px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyDaily"></tbody>
+        </table>
+      </section>
+
+      <!-- WEEKLY PANEL -->
+      <section id="panelWeekly" role="tabpanel" aria-labelledby="tabWeekly" class="hidden">
+        <div class="grid">
+          <div class="field week">
+            <label for="weekPicker">Pick any date in the week</label>
+            <input id="weekPicker" type="date" />
+          </div>
+
+          <div class="field weekInfo">
+            <div class="infoBox">
+              <div class="muted" style="font-size:12px;">Selected week (Mon → Sun)</div>
+              <div style="font-weight:900; font-size:18px; margin-top:6px;" id="weekRangeText">—</div>
+              <div class="muted" style="font-size:12px; margin-top:6px;">
+                Weekly totals are calculated from your Daily entries.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary">
+          <div class="pill">
+            <div class="k">Total Income (Selected Week)</div>
+            <div class="v" id="weekIncome">0.00</div>
+          </div>
+          <div class="pill">
+            <div class="k">Total Expenses (Selected Week)</div>
+            <div class="v" id="weekExpenses">0.00</div>
+          </div>
+          <div class="pill">
+            <div class="k">Profit (Income − Expenses)</div>
+            <div class="v" id="weekProfit">0.00</div>
+          </div>
+        </div>
+
+        <h3 class="sectionTitle">Entries inside this week</h3>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 140px;">Date</th>
+              <th>Description</th>
+              <th class="num" style="width: 140px;">Income</th>
+              <th class="num" style="width: 140px;">Expenses</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyWeekly"></tbody>
+        </table>
+
+        <h3 class="sectionTitle" style="margin-top:18px;">Weekly Entry (Saved Record)</h3>
+        <div class="row" style="margin-top:12px;">
+          <input id="weekNote" type="text" maxlength="80" placeholder="Weekly note (optional) e.g. Busy week, market day..." />
+          <button id="saveWeekBtn">Save Weekly Entry</button>
+          <span class="muted" id="weekStatus"></span>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 220px;">Week</th>
+              <th>Note</th>
+              <th class="num" style="width: 140px;">Income</th>
+              <th class="num" style="width: 140px;">Expenses</th>
+              <th class="num" style="width: 140px;">Profit</th>
+              <th class="actions" style="width: 120px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyWeeklySaved"></tbody>
+        </table>
+      </section>
+    </div>
+
+    <footer>Made by Daniel Louis for his mum</footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
