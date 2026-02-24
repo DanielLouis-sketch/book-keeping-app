@@ -1,11 +1,10 @@
 // =========================
 // Income & Expenses Tracker
 // Made by Daniel Louis for his mum
-// Daily + Weekly + Weekly Saved Entry
-// Weekly entries table shows the SAME daily entries (filtered by week)
+// Daily + Weekly + Weekly Saved Entry + Edit Button
 // =========================
 
-const STORAGE_KEY = "income_expense_entries_v3";
+const STORAGE_KEY = "income_expense_entries_v4";
 const WEEKLY_STORAGE_KEY = "income_expense_weekly_v1";
 
 const el = {
@@ -44,6 +43,8 @@ const el = {
   weekStatus: document.getElementById("weekStatus"),
   tbodyWeeklySaved: document.getElementById("tbodyWeeklySaved"),
 };
+
+let editingId = null; // which entry is currently being edited
 
 function money(n) {
   const num = Number(n);
@@ -107,17 +108,12 @@ function setWeekStatus(msg) {
 function getWeekBounds(anyDate) {
   const d = new Date(anyDate);
   d.setHours(0, 0, 0, 0);
-
-  // JS: Sun=0, Mon=1, ... Sat=6
   const day = d.getDay();
-  const diffToMon = (day === 0) ? -6 : (1 - day); // if Sunday, go back 6
-
+  const diffToMon = (day === 0) ? -6 : (1 - day); // Sunday => go back 6
   const start = new Date(d);
   start.setDate(d.getDate() + diffToMon);
-
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
-
   return { start, end };
 }
 
@@ -143,6 +139,34 @@ function computeAllTotals() {
   el.profit.textContent = money(inc - exp);
 }
 
+function renderEntryRow(e) {
+  // if this row is in edit mode
+  if (editingId === e.id) {
+    return `
+      <td><input class="tableInput" type="date" data-field="date" value="${e.date || ""}"></td>
+      <td><input class="tableInput" type="text" data-field="desc" maxlength="80" value="${escapeHtml(e.desc || "")}"></td>
+      <td class="num"><input class="tableInput" type="number" min="0" step="0.01" data-field="income" value="${Number(e.income) || 0}"></td>
+      <td class="num"><input class="tableInput" type="number" min="0" step="0.01" data-field="expenses" value="${Number(e.expenses) || 0}"></td>
+      <td class="actions">
+        <button data-action="save" data-id="${e.id}">Save</button>
+        <button class="danger" data-action="cancel" data-id="${e.id}">Cancel</button>
+      </td>
+    `;
+  }
+
+  // normal row
+  return `
+    <td>${e.date || ""}</td>
+    <td>${escapeHtml(e.desc || "")}</td>
+    <td class="num">${money(e.income)}</td>
+    <td class="num">${money(e.expenses)}</td>
+    <td class="actions">
+      <button data-action="edit" data-id="${e.id}">Edit</button>
+      <button class="danger" data-action="delete" data-id="${e.id}">Delete</button>
+    </td>
+  `;
+}
+
 function renderDaily() {
   el.tbodyDaily.innerHTML = "";
 
@@ -154,20 +178,11 @@ function renderDaily() {
     return;
   }
 
-  // newest first
   const sorted = [...entries].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
   for (const e of sorted) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${e.date || ""}</td>
-      <td>${escapeHtml(e.desc || "")}</td>
-      <td class="num">${money(e.income)}</td>
-      <td class="num">${money(e.expenses)}</td>
-      <td class="actions">
-        <button class="danger" data-id="${e.id}">Delete</button>
-      </td>
-    `;
+    tr.innerHTML = renderEntryRow(e);
     el.tbodyDaily.appendChild(tr);
   }
 
@@ -217,15 +232,7 @@ function renderWeekly() {
 
   for (const e of weekEntries) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${e.date || ""}</td>
-      <td>${escapeHtml(e.desc || "")}</td>
-      <td class="num">${money(e.income)}</td>
-      <td class="num">${money(e.expenses)}</td>
-      <td class="actions">
-        <button class="danger" data-id="${e.id}">Delete</button>
-      </td>
-    `;
+    tr.innerHTML = renderEntryRow(e);
     el.tbodyWeekly.appendChild(tr);
   }
 }
@@ -240,7 +247,6 @@ function renderWeeklySaved() {
     return;
   }
 
-  // newest first by week start
   const sorted = [...weeklyRecords].sort((a, b) => (b.start || "").localeCompare(a.start || ""));
 
   for (const w of sorted) {
@@ -282,7 +288,7 @@ function addEntry() {
   entries.push(entry);
   saveEntries(entries);
 
-  // IMPORTANT: keep weekly picker synced so entries show there too
+  // keep weekly view synced to this date
   el.weekPicker.value = date;
 
   renderDaily();
@@ -296,6 +302,7 @@ function addEntry() {
 }
 
 function deleteEntry(id) {
+  if (editingId === id) editingId = null;
   entries = entries.filter(e => e.id !== id);
   saveEntries(entries);
   renderDaily();
@@ -305,11 +312,50 @@ function deleteEntry(id) {
 
 function clearAll() {
   if (!confirm("Clear all daily entries? This cannot be undone.")) return;
+  editingId = null;
   entries = [];
   saveEntries(entries);
   renderDaily();
   renderWeekly();
   setStatus("All daily entries cleared.");
+}
+
+function beginEdit(id) {
+  editingId = id;
+  renderDaily();
+  renderWeekly();
+}
+
+function cancelEdit(id) {
+  if (editingId === id) editingId = null;
+  renderDaily();
+  renderWeekly();
+}
+
+function saveEdit(id, rowEl) {
+  const date = rowEl.querySelector('[data-field="date"]')?.value?.trim();
+  const desc = rowEl.querySelector('[data-field="desc"]')?.value?.trim();
+  const incomeVal = Number(rowEl.querySelector('[data-field="income"]')?.value);
+  const expensesVal = Number(rowEl.querySelector('[data-field="expenses"]')?.value);
+
+  if (!date) return setStatus("Date is required.");
+  if (!desc) return setStatus("Description is required.");
+  if (!Number.isFinite(incomeVal) || incomeVal < 0) return setStatus("Income must be 0 or more.");
+  if (!Number.isFinite(expensesVal) || expensesVal < 0) return setStatus("Expenses must be 0 or more.");
+
+  const idx = entries.findIndex(e => e.id === id);
+  if (idx < 0) return;
+
+  entries[idx] = { ...entries[idx], date, desc, income: incomeVal, expenses: expensesVal };
+  saveEntries(entries);
+  editingId = null;
+
+  // keep weekly picker reasonable (optional)
+  el.weekPicker.value = date;
+
+  renderDaily();
+  renderWeekly();
+  setStatus("Entry updated.");
 }
 
 function saveWeeklyEntry() {
@@ -378,24 +424,28 @@ function switchTo(which) {
 el.addBtn.addEventListener("click", addEntry);
 el.clearBtn.addEventListener("click", clearAll);
 
-// Delete in Daily table
-el.tbodyDaily.addEventListener("click", (e) => {
-  const btn = e.target.closest("button[data-id]");
+function handleRowActions(e) {
+  const btn = e.target.closest("button[data-action]");
   if (!btn) return;
-  deleteEntry(btn.getAttribute("data-id"));
-});
 
-// Delete in Weekly (same entries) table
-el.tbodyWeekly.addEventListener("click", (e) => {
-  const btn = e.target.closest("button[data-id]");
-  if (!btn) return;
-  deleteEntry(btn.getAttribute("data-id"));
-});
+  const action = btn.getAttribute("data-action");
+  const id = btn.getAttribute("data-id");
+  if (!id) return;
 
-el.weekPicker.addEventListener("input", () => {
-  renderWeekly();
-});
+  const rowEl = btn.closest("tr");
 
+  if (action === "delete") return deleteEntry(id);
+  if (action === "edit") return beginEdit(id);
+  if (action === "cancel") return cancelEdit(id);
+  if (action === "save") return saveEdit(id, rowEl);
+}
+
+// Daily row actions
+el.tbodyDaily.addEventListener("click", handleRowActions);
+// Weekly row actions (same entries)
+el.tbodyWeekly.addEventListener("click", handleRowActions);
+
+el.weekPicker.addEventListener("input", () => renderWeekly());
 el.saveWeekBtn.addEventListener("click", saveWeeklyEntry);
 
 el.tbodyWeeklySaved.addEventListener("click", (e) => {

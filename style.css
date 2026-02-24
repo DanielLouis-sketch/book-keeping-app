@@ -122,3 +122,16 @@ footer {
   font-size: 12px;
   opacity: 0.75;
 }
+
+/* Inline edit inputs in table */
+.tableInput {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,0,0,0.25);
+  color: #eaf0ff;
+  outline: none;
+  font-size: 13px;
+}
+.actions button { margin-left: 6px; }
