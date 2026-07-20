@@ -49,7 +49,43 @@ let editingId = null; // which entry is currently being edited
 function money(n) {
   const num = Number(n);
   if (!Number.isFinite(num)) return "0.00";
-  return num.toFixed(2);
+  return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Strip commas (and spaces) from user input, return the raw number
+function parseNumericInput(val) {
+  if (typeof val === "number") return val;
+  const cleaned = String(val).replace(/[,\s]/g, "");
+  return cleaned === "" ? 0 : Number(cleaned);
+}
+
+// Live-format a text input with commas as the user types
+function formatInputWithCommas(input) {
+  input.addEventListener("input", () => {
+    const cursorPos = input.selectionStart;
+    const oldLen = input.value.length;
+
+    // Strip everything except digits and decimal point
+    let raw = input.value.replace(/[^0-9.]/g, "");
+
+    // Only allow one decimal point
+    const parts = raw.split(".");
+    if (parts.length > 2) {
+      raw = parts[0] + "." + parts.slice(1).join("");
+    }
+
+    // Format integer part with commas
+    const intPart = parts[0];
+    const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const formatted = parts.length > 1 ? formattedInt + "." + parts[1] : formattedInt;
+
+    input.value = formatted;
+
+    // Adjust cursor position
+    const newLen = input.value.length;
+    const diff = newLen - oldLen;
+    input.setSelectionRange(cursorPos + diff, cursorPos + diff);
+  });
 }
 
 function escapeHtml(str) {
@@ -145,8 +181,8 @@ function renderEntryRow(e) {
     return `
       <td><input class="tableInput" type="date" data-field="date" value="${e.date || ""}"></td>
       <td><input class="tableInput" type="text" data-field="desc" maxlength="80" value="${escapeHtml(e.desc || "")}"></td>
-      <td class="num"><input class="tableInput" type="number" min="0" step="0.01" data-field="income" value="${Number(e.income) || 0}"></td>
-      <td class="num"><input class="tableInput" type="number" min="0" step="0.01" data-field="expenses" value="${Number(e.expenses) || 0}"></td>
+      <td class="num"><input class="tableInput" type="text" inputmode="decimal" data-field="income" value="${money(e.income)}"></td>
+      <td class="num"><input class="tableInput" type="text" inputmode="decimal" data-field="expenses" value="${money(e.expenses)}"></td>
       <td class="actions">
         <button data-action="save" data-id="${e.id}">Save</button>
         <button class="danger" data-action="cancel" data-id="${e.id}">Cancel</button>
@@ -267,8 +303,8 @@ function renderWeeklySaved() {
 
 function addEntry() {
   const date = el.date.value.trim();
-  const incomeVal = el.income.value === "" ? 0 : Number(el.income.value);
-  const expensesVal = el.expenses.value === "" ? 0 : Number(el.expenses.value);
+  const incomeVal = parseNumericInput(el.income.value);
+  const expensesVal = parseNumericInput(el.expenses.value);
   const desc = el.desc.value.trim();
 
   if (!date) return setStatus("Please choose a date.");
@@ -335,8 +371,8 @@ function cancelEdit(id) {
 function saveEdit(id, rowEl) {
   const date = rowEl.querySelector('[data-field="date"]')?.value?.trim();
   const desc = rowEl.querySelector('[data-field="desc"]')?.value?.trim();
-  const incomeVal = Number(rowEl.querySelector('[data-field="income"]')?.value);
-  const expensesVal = Number(rowEl.querySelector('[data-field="expenses"]')?.value);
+  const incomeVal = parseNumericInput(rowEl.querySelector('[data-field="income"]')?.value);
+  const expensesVal = parseNumericInput(rowEl.querySelector('[data-field="expenses"]')?.value);
 
   if (!date) return setStatus("Date is required.");
   if (!desc) return setStatus("Description is required.");
@@ -466,6 +502,10 @@ const todayISO = `${yyyy}-${mm}-${dd}`;
 
 if (!el.date.value) el.date.value = todayISO;
 if (!el.weekPicker.value) el.weekPicker.value = todayISO;
+
+// Attach live comma-formatting to income & expenses inputs
+formatInputWithCommas(el.income);
+formatInputWithCommas(el.expenses);
 
 // Initial render
 renderDaily();
